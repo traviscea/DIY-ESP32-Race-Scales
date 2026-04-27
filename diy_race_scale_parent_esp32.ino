@@ -104,36 +104,54 @@ void applyStability(float value, float &lastValue, bool &locked){
 
 void handleData(){
 
-  float total=FL+FR+RL+RR;
-
-  if(total <= 0.1) total = 1;
-
-  float front=FL+FR;
-  float rear=RL+RR;
-
-  float left=FL+RL;
-  float right=FR+RR;
-
-  float cross=FL+RR;
-
-  float frontpct=(front/total)*100;
-  float rearpct=(rear/total)*100;
-  float leftpct=(left/total)*100;
-  float rightpct=(right/total)*100;
-  float crosspct=(cross/total)*100;
-
   bool FR_online = (millis() - FR_lastSeen) < 3000;
   bool RL_online = (millis() - RL_lastSeen) < 3000;
   bool RR_online = (millis() - RR_lastSeen) < 3000;
   bool FL_online = scalePresent;
 
+  // force unlock if offline
+  if(!FL_online) FL_locked = false;
+  if(!FR_online) FR_locked = false;
+  if(!RL_online) RL_locked = false;
+  if(!RR_online) RR_locked = false;
+
+  // sanitize values
+  auto safe = [](float v){
+    if(isnan(v) || v < 0) return 0.0f;
+    return v;
+  };
+
+  float FL_w = FL_online ? safe(FL) : 0;
+  float FR_w = FR_online ? safe(FR) : 0;
+  float RL_w = RL_online ? safe(RL) : 0;
+  float RR_w = RR_online ? safe(RR) : 0;
+
+  float total = FL_w + FR_w + RL_w + RR_w;
+
+  float front=FL_w+FR_w;
+  float rear=RL_w+RR_w;
+
+  float left=FL_w+RL_w;
+  float right=FR_w+RR_w;
+
+  float cross=FL_w+RR_w;
+
+  float frontpct=0, rearpct=0, leftpct=0, rightpct=0, crosspct=0;
+
+  if(total > 0){
+    frontpct=(front/total)*100;
+    rearpct=(rear/total)*100;
+    leftpct=(left/total)*100;
+    rightpct=(right/total)*100;
+    crosspct=(cross/total)*100;
+  }
 
   String json="{";
 
-  json+="\"fl\":"+String(FL)+",";
-  json+="\"fr\":"+String(FR)+",";
-  json+="\"rl\":"+String(RL)+",";
-  json+="\"rr\":"+String(RR)+",";
+  json+="\"fl\":"+String(FL_w)+",";
+  json+="\"fr\":"+String(FR_w)+",";
+  json+="\"rl\":"+String(RL_w)+",";
+  json+="\"rr\":"+String(RR_w)+",";
 
   json += "\"fl_online\":" + String(FL_online ? "true":"false") + ",";
   json += "\"fr_online\":" + String(FR_online ? "true":"false") + ",";
@@ -150,7 +168,7 @@ void handleData(){
   json+="\"rl_batt\":"+String(battPercent(RL_batt))+",";
   json+="\"rr_batt\":"+String(battPercent(RR_batt))+",";
 
-  json+="\"total\":"+String(total <=1 ? 0 : total)+",";
+  json+="\"total\":"+String(total)+",";
 
   json+="\"front\":"+String(front)+",";
   json+="\"rear\":"+String(rear)+",";
