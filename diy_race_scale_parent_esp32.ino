@@ -121,10 +121,12 @@ void handleData(){
     return v;
   };
 
-  float FL_w = FL_online ? safe(FL) : 0;
-  float FR_w = FR_online ? safe(FR) : 0;
-  float RL_w = RL_online ? safe(RL) : 0;
-  float RR_w = RR_online ? safe(RR) : 0;
+  const float PAD_WEIGHT = 5.0;
+
+  float FL_w = FL_online ? safe(FL) + PAD_WEIGHT : 0;
+  float FR_w = FR_online ? safe(FR) + PAD_WEIGHT : 0;
+  float RL_w = RL_online ? safe(RL) + PAD_WEIGHT : 0;
+  float RR_w = RR_online ? safe(RR) + PAD_WEIGHT : 0;
 
   float total = FL_w + FR_w + RL_w + RR_w;
 
@@ -897,6 +899,12 @@ void setup(){
   server.on("/data",handleData);
   server.on("/tare",handleTare);
   server.on("/calibrate",handleCalibrate);
+  server.on("/reset", [](){
+    prefs.begin("scales", false);
+    prefs.clear();
+    prefs.end();
+    server.send(200, "text/plain", "RESET DONE");
+  });
 
   prefs.begin("scales");
 
@@ -911,14 +919,14 @@ void setup(){
 }
 
 void loop(){
-
+  Serial.println("HX711 detected");
   /* detect scale if plugged in later */
   if(!scaleInitialized && millis() - lastScaleCheck > 1000){
     lastScaleCheck = millis();
     if(scale.is_ready()){
       Serial.println("HX711 detected");
 
-      if(FL_offset == 0){   // 🔥 only if no saved value
+      if(FL_offset == 0){   
         delay(500);
         FL_offset = scale.read_average(20);
         prefs.putFloat("FL_offset", FL_offset);
@@ -932,6 +940,7 @@ void loop(){
   /* read FL scale */
   if(scalePresent && scale.is_ready()){
     float raw = scale.read_average(10);
+    Serial.println(raw);
     float FL_new = (raw - FL_offset) / FL_cal;
     applyStability(FL_new, lastFL, FL_locked);
     if(FL_filtered == 0){
