@@ -121,12 +121,10 @@ void handleData(){
     return v;
   };
 
-  const float PAD_WEIGHT = 5.0;
-
-  float FL_w = FL_online ? safe(FL) + PAD_WEIGHT : 0;
-  float FR_w = FR_online ? safe(FR) + PAD_WEIGHT : 0;
-  float RL_w = RL_online ? safe(RL) + PAD_WEIGHT : 0;
-  float RR_w = RR_online ? safe(RR) + PAD_WEIGHT : 0;
+  float FL_w = FL_online ? safe(FL) : 0;
+  float FR_w = FR_online ? safe(FR) : 0;
+  float RL_w = RL_online ? safe(RL) : 0;
+  float RR_w = RR_online ? safe(RR) : 0;
 
   float total = FL_w + FR_w + RL_w + RR_w;
 
