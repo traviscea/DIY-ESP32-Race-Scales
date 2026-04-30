@@ -75,7 +75,30 @@ Bambu 3mf: https://makerworld.com/en/models/2737068-diy-race-scale-esp32-mount-b
 Stl file: https://drive.google.com/file/d/1Z9YkdcgCBxQTEjgYmJWulF77Iv5ffJcg/view?usp=sharing
 
 
+## Wiring
 
+```
+PAD layout:
+______________
+| A        C |
+|            |
+| B        D |
+______________
+
+PAD(Labeled above) → HX711
+A → E+
+D → E-
+B → A-
+C → A+
+
+HX711 → ESP32
+VCC → 3.3V
+GND → GND
+DT  → GPIO 4
+SCK → GPIO 5
+```
+
+---
 
 ## Architecture
 
