@@ -30,16 +30,41 @@ https://youtu.be/h9uxLq12wOU
 ### Per Pad (x4)
 - ESP32 (Lite or Dev board)  
 - HX711 amplifier  
-- 4 load cells (or a single combined platform)  
-- Wiring and connectors  
-- Battery (optional)  
+- 12 load cells 
+- Wiring and connectors(comes with hx711's)  
+- Battery(optional)
 
-### Master (Controller)
-- ESP32 (recommended: ESP32-S3 or ESP32 Dev board)  
-- Optional HX711 (for FL local pad)  
-- WiFi capability (runs its own access point)  
+Esp32 lite(4 pack) = $17
+https://www.amazon.com/Bluetooth-Development-Antenna-MicroPython-Arduino/dp/B0D7V9GKHV?pd_rd_w=qu7ib&content-id=amzn1.sym.a1c22caf-2d4a-4c58-b920-210b8f6b9234&pf_rd_p=a1c22caf-2d4a-4c58-b920-210b8f6b9234&pf_rd_r=1K3H3M4S7FN856PNXRZX&pd_rd_wg=qjO1W&pd_rd_r=3da1b217-4232-4600-9ed4-17c113e8f9a5&pd_rd_i=B0D7V9GKHV&psc=1&linkCode=ll2&tag=traviscea05-20&linkId=ddd1caaf149a3d7df813d882b684685d&language=en_US&ref_=as_li_ss_tl
 
----
+Alternate link for esp32 lites if others are sold out(you need 4 esp32s):
+https://www.amazon.com/V1-0-0-Bluetuth-Development-ESP-32-MicroPython/dp/B0FBGKK484?crid=17WSD3V9NQ413&dib=eyJ2IjoiMSJ9.0mMutUw27FQh3oBplnQp1ehm2_8dKdtx9ewAsDJyPX2TvjIiAv0tHRh221LBU5XGbP78VNZbeMEqlELbOma7iFtdZbbSTFPk0mZLl5Yqcgoe_Exm8BTwBnzIoaSUUZM4gp5d5-_vyUAqpObyvbEQcYg1qrUN0IIQcIhH8B1XkMQyrHryTqTa_Y1MONCmQ7wu_7TbilEwf21As29RzhMz1QMHID95MqGbWyS1HaGAPak.Z9JD3uAwjzWMCq5MB7yQeq_6o0ThsDc1C0nS0Tonipk&dib_tag=se&keywords=esp32+lite+4&qid=1777433267&sprefix=esp32+lite+%2Caps%2C191&sr=8-17&linkCode=ll2&tag=traviscea05-20&linkId=6603be8a29e5e0e344c7640111766d7e&language=en_US&ref_=as_li_ss_tl
+
+HX711(4 pack) = $7 
+https://www.amazon.com/dp/B0BLND4VF6?social_share=cm_sw_r_cp_ud_dp_XQKKQSD12G3YQSVKNPX8&linkCode=ll2&tag=traviscea05-20&linkId=eac704287f110a03faf7c303873c94fd&language=en_US&ref_=as_li_ss_tl
+
+Battery Pack(4 pack) = $17 
+https://www.amazon.com/MakerHawk-Rechargeable-Protection-Connector-Electronic/dp/B0D9K7HQHT?_encoding=UTF8&pd_rd_w=EenFZ&content-id=amzn1.sym.a9c4acee-9ca0-46be-bae3-532a2b4b0d29%3Aamzn1.symc.5a16118f-86f0-44cd-8e3e-6c5f82df43d0&pf_rd_p=a9c4acee-9ca0-46be-bae3-532a2b4b0d29&pf_rd_r=J8X3P7FS184DMQ0HEJRD&pd_rd_wg=f3ZF4&pd_rd_r=d263d5cc-fec2-4817-bc85-5528fa1dd645&th=1&linkCode=ll2&tag=traviscea05-20&linkId=37cb3096cedf42353d0263f6f533e836&language=en_US&ref_=as_li_ss_tl
+
+JST battery connectors(for more length) = 6$
+https://www.amazon.com/dp/B0FW4Y4FSL?&linkCode=ll2&tag=traviscea05-20&linkId=2dc5248c0eb4ad13a03cd092e03af09c&language=en_US&ref_=as_li_ss_tl
+
+Load cells(48, buy 3 sets of 20) = $45 
+https://www.amazon.com/dp/B09KGSGL18?social_share=cm_sw_r_cp_ud_dp_BH1Y8XC925MPHF1E74TW&linkCode=ll2&tag=traviscea05-20&linkId=46be772bed19824dc515417869be07c8&language=en_US&ref_=as_li_ss_tl
+
+Wood 2x12x8 = $20 
+***I used 18in sections here for my 245 tires. You may want more or less distance depending on your tire width.
+
+
+## 3d Print files
+Load cell holder:
+https://makerworld.com/en/models/2728603-diy-race-scale-50kg-load-cell-mounts#profileId-3023804
+
+Box for Esp32
+https://makerworld.com/en/models/2737068-diy-race-scale-esp32-mount-box#profileId-3034590
+
+
+
 
 ## Architecture
 
