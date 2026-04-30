@@ -117,30 +117,12 @@ Retrieve the MAC address from the master ESP32 serial output.
 
 ## Important Notes
 
-### ESP32 Pin Selection
-
-**Avoid:**
-- GPIO 6–11 (flash pins)
-
-**Recommended:**
-- GPIO 16, 17, 18, 19, 21, 22, 23
-
----
-
 ## Stability Tips
 
 - Let scales settle before zeroing
 - Use solid ground wiring
 - Add capacitors to HX711 (0.1µF + 10µF)
 - Avoid long signal wires
-
----
-
-## Performance Tips
-
-- Avoid heavy logic inside ESP-NOW callbacks
-- Use filtering and stability locking
-- Disable excessive Serial logging in production
 
 ---
 
