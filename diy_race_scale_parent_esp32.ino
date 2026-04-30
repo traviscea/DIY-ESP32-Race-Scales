@@ -1,3 +1,8 @@
+/*
+traviscea DIY Race Scales – Version 1.0
+Copyright (c) 2026 Travis Way
+*/
+
 #define ARDUINO_USB_CDC_ON_BOOT 1
 
 #include <WiFi.h>
