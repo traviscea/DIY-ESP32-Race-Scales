@@ -1,3 +1,8 @@
+/*
+traviscea DIY Race Scales – Version 1.0
+Copyright (c) 2026 Travis Way
+*/
+
 #include <WiFi.h>
 #include <esp_now.h>
 #include <Preferences.h>
