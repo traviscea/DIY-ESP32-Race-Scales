@@ -62,10 +62,17 @@ Wood 2x12x8 = $20
 
 ## 3d Print files
 Load cell holder:
-https://makerworld.com/en/models/2728603-diy-race-scale-50kg-load-cell-mounts#profileId-3023804
+<br>
+Bambu 3mf: https://makerworld.com/en/models/2728603-diy-race-scale-50kg-load-cell-mounts#profileId-3023804
 
-Box for Esp32
-https://makerworld.com/en/models/2737068-diy-race-scale-esp32-mount-box#profileId-3034590
+Stl file: https://drive.google.com/file/d/1BfqhXBpTUUBheZa0adTtnxa-Y_LcbjTP/view?usp=sharing
+
+
+Box for Esp32:
+<br>
+Bambu 3mf: https://makerworld.com/en/models/2737068-diy-race-scale-esp32-mount-box#profileId-3034590
+
+Stl file: https://drive.google.com/file/d/1Z9YkdcgCBxQTEjgYmJWulF77Iv5ffJcg/view?usp=sharing
 
 
 
