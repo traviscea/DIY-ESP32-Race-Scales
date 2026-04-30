@@ -34,6 +34,10 @@ https://youtu.be/h9uxLq12wOU
 - Wiring and connectors(comes with hx711's)  
 - Battery(optional)
 
+Disclaimer: Some of the links below are affiliate links, which means I may earn a commission at no extra cost to you.
+
+As an Amazon Associate I earn from qualifying purchases.
+
 Esp32 lite(4 pack) = $17
 https://www.amazon.com/Bluetooth-Development-Antenna-MicroPython-Arduino/dp/B0D7V9GKHV?pd_rd_w=qu7ib&content-id=amzn1.sym.a1c22caf-2d4a-4c58-b920-210b8f6b9234&pf_rd_p=a1c22caf-2d4a-4c58-b920-210b8f6b9234&pf_rd_r=1K3H3M4S7FN856PNXRZX&pd_rd_wg=qjO1W&pd_rd_r=3da1b217-4232-4600-9ed4-17c113e8f9a5&pd_rd_i=B0D7V9GKHV&psc=1&linkCode=ll2&tag=traviscea05-20&linkId=ddd1caaf149a3d7df813d882b684685d&language=en_US&ref_=as_li_ss_tl
 
