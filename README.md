@@ -78,6 +78,10 @@ Stl file: https://drive.google.com/file/d/1Z9YkdcgCBxQTEjgYmJWulF77Iv5ffJcg/view
 
 
 ## Wiring
+Make sure to check the polarity on the battery/eps32 connection. Some esp32s would be backwards on the jst connection from the battery.  I had to swap mine to ensure it didn't blow the board.  The board will have the positive side labeled and that show be the side that gets the red wire from the battery.
+
+<br>
+
 Make the wheatstone bridges as I have described in the video above(black to black, white to white). 
 Then wire the all the red wires from each corner as shown below
 
