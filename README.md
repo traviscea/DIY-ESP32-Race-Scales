@@ -61,6 +61,8 @@ Wood 2x12x8 = $20
 
 
 ## 3d Print files
+PETG filament I used: [Amazon link](https://www.amazon.com/OVERTURE-Filament-Consumables-Dimensional-Accuracy/dp/B07PGYHYV8?adgrpid=191564566452&dib=eyJ2IjoiMSJ9.uV75SqbTLCgAy78vKWUZ0VUSWFtXi-5DzJINPhuQ9V8zrYwjYe66q0YGr8sG1nKs_rOAuqN59tx6vZ4L2lL_fWAbo0rkwGZ-Y7fKun_2db5yr8mI7cER3wtzvZrGoTCWxbB5r1Yics1vA5P2UVPJt1qCaX9FMctx4sXoK_W5GvG-Gf7wX5gsMw5-k1r5VXXaxdwAc9fhtHGWi4gdZoppUZdZbnXRd2UimD1gf57p_nyHo_3RnHGDTfJXPCMz0ZKtY-bOKHTBhSEb3nVChVI1alxOgWRryRfuJ16npHx-8OI.Pm-9rvDukxqjzlyPPor2StnBqBybCGUJVkUTXMVSx7Q&dib_tag=se&hvadid=779547513984&hvdev=c&hvexpln=0&hvlocphy=9194515&hvnetw=g&hvocijid=10685258310100459603--&hvqmt=e&hvrand=10685258310100459603&hvtargid=kwd-307270553510&hydadcr=8497_13833035_2116124&keywords=petg%2Bblack&mcid=471a93842d0535b09ebc346ed5f9d949&qid=1777687529&s=industrial&sr=1-4&th=1&linkCode=ll2&tag=traviscea05-20&linkId=5f6861a79bd44ac9079275ba2786f080&language=en_US&ref_=as_li_ss_tl)
+
 Load cell holder:
 <br>
 Bambu 3mf: https://makerworld.com/en/models/2728603-diy-race-scale-50kg-load-cell-mounts#profileId-3023804
