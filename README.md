@@ -76,6 +76,8 @@ Stl file: https://drive.google.com/file/d/1Z9YkdcgCBxQTEjgYmJWulF77Iv5ffJcg/view
 
 
 ## Wiring
+Make the wheatstone bridges as I have described in the video above(black to black, white to white). 
+Then wire the all the red wires from each corner as shown below
 
 ```
 PAD layout:
