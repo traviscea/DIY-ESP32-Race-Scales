@@ -108,6 +108,21 @@ SCK → GPIO 5
 
 ---
 
+
+## Loading of Code notes
+
+If you see something like ```diy_race_scale_parent_esp32.ino:12:10: fatal error: HX711.h: No such file or directory```
+
+Open Arduino IDE.
+
+Go to Sketch > Include Library > Manage Libraries....
+
+Search for "HX711" in the search bar.
+
+Select the "HX711 Arduino Library" by Bogdan Necula (this is the most widely used and recommended version) and click Install
+
+---
+
 ## Architecture
 
 - Each pad ESP32 reads load cell data and transmits it  
