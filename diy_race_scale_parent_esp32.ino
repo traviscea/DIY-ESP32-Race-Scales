@@ -15,8 +15,9 @@ Preferences prefs;
 
 
 //Change to match your "master board"
-#define HX_DT 4
-#define HX_SCK 5
+#define HX_DT 16
+#define HX_SCK 17
+#define BAT_PIN 34
 
 typedef struct {
   char pad[4];
@@ -79,7 +80,6 @@ bool RR_locked = false;
 const float stabilityThreshold = 0.8;   // lbs change allowed
 const int stabilityTime = 1000;         // ms to lock
 
-
 WebServer server(80);
 
 float FL=0;
@@ -88,7 +88,8 @@ float RL=0;
 float RR=0;
 
 int battPercent(float v){
-  int p = (v - 3.0) * 100 / 1.2;
+  // for Lipo 3.7v, max:4.2v min:3.5v
+  int p=142.86*v-500;
   if(p>100) p=100;
   if(p<0) p=0;
   return p;
@@ -141,7 +142,7 @@ void handleData(){
 
   float cross=FL_w+RR_w;
 
-  float frontpct=0, rearpct=0, leftpct=0, rightpct=0, crosspct=0;
+  float frontpct=0, rearpct=0, leftpct=0, rightpct=0, crosspct=0, deltafrontpct=0, deltarearpct=0;
 
   if(total > 0){
     frontpct=(front/total)*100;
@@ -149,6 +150,14 @@ void handleData(){
     leftpct=(left/total)*100;
     rightpct=(right/total)*100;
     crosspct=(cross/total)*100;
+  }
+
+  if (front > 0) {
+    deltafrontpct=((FL_w-FR_w)/front)*100;
+  }
+
+  if (rear > 0) {
+    deltarearpct=((RL_w-RR_w)/rear)*100;
   }
 
   String json="{";
@@ -168,7 +177,7 @@ void handleData(){
   json += "\"rr_locked\":" + String(RR_locked?"true":"false") + ",";
   json += "\"rl_locked\":" + String(RL_locked?"true":"false") + ",";
 
-  json += "\"fl_batt\":" + String(battPercent(FL_batt)) + ",";
+  json+="\"fl_batt\":" + String(battPercent(FL_batt)) + ",";
   json+="\"fr_batt\":"+String(battPercent(FR_batt))+",";
   json+="\"rl_batt\":"+String(battPercent(RL_batt))+",";
   json+="\"rr_batt\":"+String(battPercent(RR_batt))+",";
@@ -185,6 +194,9 @@ void handleData(){
   json+="\"rearpct\":"+String(rearpct,1)+",";
   json+="\"leftpct\":"+String(leftpct,1)+",";
   json+="\"rightpct\":"+String(rightpct,1)+",";
+
+  json+="\"deltafrontpct\":"+String(deltafrontpct,1)+",";
+  json+="\"deltarearpct\":"+String(deltarearpct,1)+",";
 
   json+="\"cross\":"+String(crosspct,1);
 
@@ -378,6 +390,8 @@ void handleRoot(){
   #rearpct,
   #leftpct,
   #rightpct,
+  #deltafrontpct,
+  #deltarearpct,
   #crosspct{
     font-variant-numeric: tabular-nums;
     text-align:right;
@@ -531,11 +545,11 @@ void handleRoot(){
       <span>FL</span>
       <span class="status" id="fl_status"></span>
     </div>
+    <span id="fl_batt" style="color:#aaa;font-size:12px"></span>
     <div class="value">
       <div class="digits" id="fl"></div>
       <span id="fl_lock" class="lock"></span>
     </div>
-    <span id="fl_batt"></span>
   </div>
 
   <div class="weight fr">
@@ -543,11 +557,11 @@ void handleRoot(){
       <span>FR</span>
       <span class="status" id="fr_status"></span>
       </div>
+      <span id="fr_batt" style="color:#aaa;font-size:12px"></span>
       <div class="value">
         <div class="digits" id="fr"></div>
         <span id="fr_lock" class="lock"></span>
       </div>
-      <span id="fr_batt"></span>
   </div>
 
   <div class="weight rl">
@@ -559,7 +573,7 @@ void handleRoot(){
         <div class="digits" id="rl"></div>
         <span id="rl_lock" class="lock"></span> 
     </div>
-    <span id="rl_batt"></span>
+    <span id="rl_batt" style="color:#aaa;font-size:12px"></span>
   </div>
 
   <div class="weight rr">
@@ -571,7 +585,7 @@ void handleRoot(){
         <div class="digits" id="rr"></div>
         <span id="rr_lock" class="lock"></span> 
     </div>
-    <span id="rr_batt"></span>
+    <span id="rr_batt" style="color:#aaa;font-size:12px"></span>
   </div>
 
   <div class="car">
@@ -622,6 +636,16 @@ void handleRoot(){
         <td id="crosspct"></td>
       </tr>
       <tr>
+        <td>Δ Front</td>
+        <td>-</td>
+        <td id="deltafrontpct"></td>
+      </tr>
+      <tr>
+        <td>Δ Rear</td>
+        <td>-</td>
+        <td id="deltarearpct"></td>
+      </tr>
+      <tr>
         <td>Left</td>
         <td class="val" id="left"></td>
         <td id="leftpct"></td>
@@ -652,10 +676,10 @@ void handleRoot(){
   <div class="buttons">
     <button class="zero" onclick="tare()">ZERO</button>
     <button class="cal" onclick="calibrate()">CAL</button>
-    <button onclick="toggleUnits()" id="unitBtn">LBS</button>
+    <button onclick="toggleUnits()" id="unitBtn">KG</button>
   </div>
   <script>
-  let useKg = false;
+  let useKg = true;
 
   function calibrate() {
     let pad = prompt("Pad (FL FR RL RR)")
@@ -704,6 +728,11 @@ void handleRoot(){
       renderDigits("rl", convert(d.rl))
       renderDigits("rr", convert(d.rr))
 
+      fl_batt.innerText = d.fl_batt + "%"
+      fr_batt.innerText = d.fr_batt + "%"
+      rl_batt.innerText = d.rl_batt + "%"
+      rr_batt.innerText = d.rr_batt + "%"
+
       total.innerText = format(convert(d.total))
       front.innerText = format(convert(d.front))
       rear.innerText = format(convert(d.rear))
@@ -713,6 +742,8 @@ void handleRoot(){
       rearpct.innerText=d.rearpct
       leftpct.innerText=d.leftpct
       rightpct.innerText=d.rightpct
+      deltafrontpct.innerText=d.deltafrontpct
+      deltarearpct.innerText=d.deltarearpct
       crosspct.innerText=d.cross
       
       setStatus("fl_status",d.fl_online)
@@ -876,6 +907,9 @@ void setup(){
 
   Serial.begin(115200);
 
+  analogReadResolution(12);
+  analogSetAttenuation(ADC_11db);
+
   scale.begin(HX_DT, HX_SCK);
 
   Serial.println("HX711 optional - will detect automatically");
@@ -955,9 +989,9 @@ void loop(){
     FL = round(FL * 2) / 2.0;
   }
 
-  // int raw = analogRead(FL_BAT_PIN);\
-  // float voltage = (raw / 4095.0) * 3.3 * 2.0;  // *2 for voltage divider
-  // FL_batt = voltage;
+  int raw = analogRead(BAT_PIN);\
+  float voltage = (raw / 4095.0) * 3.3 * 2.25; // R1=R2=47K for 3.7v Lipo Battery
+  FL_batt = voltage;
 
   server.handleClient();
 

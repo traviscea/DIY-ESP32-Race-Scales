@@ -9,11 +9,11 @@ Copyright (c) 2026 Travis Way
 #include "HX711.h"
 
 /* ---------- PAD ID ---------- */
-#define PAD_ID "RR"
+#define PAD_ID "RL"
 
 /* ---------- HX711 PINS ---------- */
-#define HX_DT 4
-#define HX_SCK 5
+#define HX_DT 16
+#define HX_SCK 17
 #define BAT_PIN 34
 
 HX711 scale;
@@ -38,7 +38,7 @@ Example, if your brain/main esp32 outputs: AP MAC: 4E:DD:76:6F:A5:45
 then your masterAddress =
 uint8_t masterAddress[] = {0x4E,0xDD,0x76,0x6F,0xA5,0x45};
 */
-uint8_t masterAddress[] = {};
+uint8_t masterAddress[] = {0x5C,0x01,0x3B,0x6B,0x5E,0xE9};
 
 
 //* ---------- SEND CALLBACK ---------- */
@@ -51,6 +51,10 @@ void onSent(const wifi_tx_info_t *info, esp_now_send_status_t status) {
 void setup() {
 
   Serial.begin(115200);
+
+  analogReadResolution(12);
+  analogSetAttenuation(ADC_11db);
+
   WiFi.mode(WIFI_STA);
 
   Serial.println("Pad Booting");
@@ -124,7 +128,7 @@ void loop() {
 
   /* BATTERY */
   int rawBat = analogRead(BAT_PIN);
-  float voltage = (rawBat / 4095.0) * 3.3 * 2.0;
+  float voltage = (rawBat / 4095.0) * 3.3 * 2.25; // R1=R2=47K for 3.7v Lipo Battery
   data.battery = voltage;
 
   /* SEND */
