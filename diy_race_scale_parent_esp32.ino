@@ -27,6 +27,14 @@ typedef struct {
 
 ScaleData incomingData;
 
+enum ScaleMode {
+  MODE_CAR = 0,
+  MODE_TRIKE = 1,
+  MODE_TAIL = 2
+};
+
+ScaleMode scaleMode = MODE_CAR;
+
 bool scalePresent = false;
 bool scaleInitialized = false;
 unsigned long lastScaleCheck = 0;
@@ -141,6 +149,26 @@ void handleData(){
   float right=FR_w+RR_w;
 
   float cross=FL_w+RR_w;
+  switch(scaleMode){
+
+    case MODE_CAR:
+
+      break;
+
+    case MODE_TRIKE:
+      total = FL_w + RR_w + RL_w;
+      front = FL_w;   // nose
+      rear  = RR_w + RL_w;          // main
+
+      break;
+
+    case MODE_TAIL:
+      total = FL_w + FR_w + RL_w;
+      front = FL_w + FR_w;   // mains
+      rear = RL_w;          // tailwheel
+
+      break;
+    }
 
   float frontpct=0, rearpct=0, leftpct=0, rightpct=0, crosspct=0;
 
@@ -179,17 +207,20 @@ void handleData(){
   json+="\"front\":"+String(front)+",";
   json+="\"rear\":"+String(rear)+",";
 
-  json+="\"left\":"+String(left)+",";
-  json+="\"right\":"+String(right)+",";
-
   json+="\"frontpct\":"+String(frontpct,1)+",";
   json+="\"rearpct\":"+String(rearpct,1)+",";
+
+
+  
+  
+  json+="\"left\":"+String(left)+",";
+  json+="\"right\":"+String(right)+",";
   json+="\"leftpct\":"+String(leftpct,1)+",";
   json+="\"rightpct\":"+String(rightpct,1)+",";
 
-  json+="\"cross\":"+String(crosspct,1);
-
-  json+="}";
+  json+="\"cross\":"+String(crosspct,1)+",";
+  json += "\"mode\":" + String((int)scaleMode);
+  json += "}";
 
   server.send(200,"application/json",json);
 }
@@ -524,87 +555,138 @@ void handleRoot(){
 
   <div class="cararea">
 
-  <div class="vline"></div>
-  <div class="hline"></div>
+    <div class="vline"></div>
+    <div class="hline"></div>
 
-  <div class="weight fl">
-    <div class="top">
-      <span>FL</span>
-      <span class="status" id="fl_status"></span>
-    </div>
-    <div class="value">
-      <div class="digits" id="fl"></div>
-      <span id="fl_lock" class="lock"></span>
-    </div>
-    <span id="fl_batt"></span>
-  </div>
-
-  <div class="weight fr">
-    <div class="top">
-      <span>FR</span>
-      <span class="status" id="fr_status"></span>
+    <div class="weight fl">
+      <div class="top">
+        <span id="flLabel">FL</span>
+        <span class="status" id="fl_status"></span>
       </div>
       <div class="value">
-        <div class="digits" id="fr"></div>
-        <span id="fr_lock" class="lock"></span>
+        <div class="digits" id="fl"></div>
+        <span id="fl_lock" class="lock"></span>
       </div>
-      <span id="fr_batt"></span>
-  </div>
-
-  <div class="weight rl">
-    <div class="top">
-      <span>RL</span>
-      <span class="status" id="rl_status"></span>
-      </div>
-      <div class="value">
-        <div class="digits" id="rl"></div>
-        <span id="rl_lock" class="lock"></span> 
+      <span id="fl_batt"></span>
     </div>
-    <span id="rl_batt"></span>
-  </div>
 
-  <div class="weight rr">
-    <div class="top">
-      <span>RR</span>
-      <span class="status" id="rr_status"></span>
-      </div>
-      <div class="value">
-        <div class="digits" id="rr"></div>
-        <span id="rr_lock" class="lock"></span> 
+    <div class="weight fr">
+      <div class="top">
+        <span id="frLabel">FR</span>
+        <span class="status" id="fr_status"></span>
+        </div>
+        <div class="value">
+          <div class="digits" id="fr"></div>
+          <span id="fr_lock" class="lock"></span>
+        </div>
+        <span id="fr_batt"></span>
     </div>
-    <span id="rr_batt"></span>
-  </div>
 
-  <div class="car">
+    <div class="weight rl">
+      <div class="top">
+        <span id="rlLabel">RL</span>
+        <span class="status" id="rl_status"></span>
+        </div>
+        <div class="value">
+          <div class="digits" id="rl"></div>
+          <span id="rl_lock" class="lock"></span> 
+      </div>
+      <span id="rl_batt"></span>
+    </div>
 
-  <svg width="120" height="220" viewBox="0 0 220 300">
+    <div class="weight rr">
+      <div class="top">
+        <span id="rrLabel">RR</span>
+        <span class="status" id="rr_status"></span>
+        </div>
+        <div class="value">
+          <div class="digits" id="rr"></div>
+          <span id="rr_lock" class="lock"></span> 
+      </div>
+      <span id="rr_batt"></span>
+    </div>
 
-  <path fill="#16a34a" stroke="#111" stroke-width="3" d="
-  M85 10
-  L135 10
-  Q155 20 160 50
-  L165 100
-  L165 200
-  L160 250
-  Q155 280 135 290
-  L85 290
-  Q65 280 60 250
-  L55 200
-  L55 100
-  L60 50
-  Q65 20 85 10
-  Z"/>
+    <div id="carSvg" class="car">
 
-  <rect x="75" y="55" width="70" height="40" rx="10" fill="#2f2f2f"/>
-  <rect x="75" y="215" width="70" height="40" rx="10" fill="#2f2f2f"/>
+      <svg width="120" height="220" viewBox="0 0 220 300">
 
-  <polygon points="55,120 45,130 55,140" fill="#16a34a"/>
-  <polygon points="165,120 175,130 165,140" fill="#16a34a"/>
+      <path fill="#16a34a" stroke="#111" stroke-width="3" d="
+      M85 10
+      L135 10
+      Q155 20 160 50
+      L165 100
+      L165 200
+      L160 250
+      Q155 280 135 290
+      L85 290
+      Q65 280 60 250
+      L55 200
+      L55 100
+      L60 50
+      Q65 20 85 10
+      Z"/>
 
-  </svg>
+      <rect x="75" y="55" width="70" height="40" rx="10" fill="#2f2f2f"/>
+      <rect x="75" y="215" width="70" height="40" rx="10" fill="#2f2f2f"/>
 
-  </div>
+      <polygon points="55,120 45,130 55,140" fill="#16a34a"/>
+      <polygon points="165,120 175,130 165,140" fill="#16a34a"/>
 
+      </svg>
+
+    </div>
+    <div id="plane_tail_Svg" class="car" style="display:none;">
+      <svg width="180" height="260" viewBox="0 0 180 260">
+
+        <!-- fuselage -->
+        <rect x="80" y="20" width="20" height="180" rx="10"
+              fill="#16a34a"/>
+
+        <!-- wings -->
+        <rect x="20" y="90" width="140" height="20"
+              fill="#16a34a"/>
+
+        <!-- tailplane -->
+        <rect x="50" y="170" width="80" height="12"
+              fill="#16a34a"/>
+
+        <!-- nose wheel markers -->
+        <circle cx="50" cy="40" r="8" fill="#22c55e"/>
+        <circle cx="130" cy="40" r="8" fill="#22c55e"/>
+
+        <!-- main wheel marker -->
+        <circle cx="90" cy="220" r="10" fill="#22c55e"/>
+
+      </svg>
+    </div>
+    <div id="plane_trike_Svg" class="car" style="display:none;">
+      <svg width="180" height="220" viewBox="0 0 180 200">
+
+        <!-- fuselage -->
+        <rect x="80" y="20" width="20" height="140" rx="10"
+              fill="#16a34a"/>
+
+        <!-- wing -->
+        <rect x="25" y="80" width="130" height="18"
+              fill="#16a34a"/>
+
+        <!-- tailplane -->
+        <rect x="55" y="140" width="70" height="10"
+              fill="#16a34a"/>
+
+        <!-- nose wheel -->
+        <circle cx="90" cy="0" r="8"
+                fill="#22c55e"/>
+
+        <!-- mains -->
+        <circle cx="45" cy="185" r="10"
+                fill="#22c55e"/>
+
+        <circle cx="135" cy="185" r="10"
+                fill="#22c55e"/>
+
+      </svg>
+    </div>
   </div>
 
   <div class="panel">
@@ -617,7 +699,7 @@ void handleRoot(){
       </tr>
     </thead>
     <tbody>
-      <tr>
+      <tr id="crossRow">
         <td>Cross</td>
         <td>-</td>
         <td id="crosspct"></td>
@@ -633,12 +715,12 @@ void handleRoot(){
         <td id="rightpct"></td>
       </tr>
       <tr>
-        <td>Front</td>
+        <td id="frontLabel">Front</td>
         <td class="val" id="front"></td>
         <td id="frontpct"></td>
       </tr>
       <tr>
-      <td>Rear</td>
+        <td id="rearLabel">Rear</td>
         <td class="val" id="rear"></td>
         <td id="rearpct"></td>
       </tr>
@@ -654,8 +736,20 @@ void handleRoot(){
     <button class="zero" onclick="tare()">ZERO</button>
     <button class="cal" onclick="calibrate()">CAL</button>
     <button onclick="toggleUnits()" id="unitBtn">LBS</button>
+    <button onclick="toggleMode()" id="modeBtn">CAR</button>
   </div>
   <script>
+
+  let currentMode = 0;
+
+  function toggleMode(){
+    currentMode++;
+    if(currentMode > 2)
+        currentMode = 0;
+    setModeUI(currentMode);
+    fetch("/mode?mode=" + currentMode);
+  }
+
   let useKg = false;
 
   function calibrate(){
@@ -739,8 +833,77 @@ void handleRoot(){
       setLock("rl_lock", d.rl_locked)
       setLock("rr_lock", d.rr_locked)
 
+      setModeUI(d.mode);
+
     })
 
+  }
+
+  function setModeUI(mode){
+
+      currentMode = mode;
+
+      document.querySelector(".fr").style.display = "flex";
+      document.querySelector(".rl").style.display = "flex";
+      document.querySelector(".rr").style.display = "flex";
+
+      carSvg.style.display = "none";
+      plane_trike_Svg.style.display = "none";
+      plane_tail_Svg.style.display = "none";
+
+      switch(mode){
+
+          case 0: // CAR
+
+              carSvg.style.display = "block";
+              crossRow.style.display = "";
+              modeBtn.innerText = "CAR";
+
+              flLabel.innerText="FL";
+              frLabel.innerText="FR";
+              rlLabel.innerText="RL";
+              rrLabel.innerText="RR";
+
+              document.querySelector(".rr").style.display = "flex";
+
+              break;
+
+          case 1: //Trike
+            
+            plane_trike_Svg.style.display = "block";
+            crossRow.style.display = "none";
+            flLabel.innerText = "NOSE(FL)";
+            rlLabel.innerText = "ML";
+            rrLabel.innerText = "MR";
+            frLabel.innerText = "";
+            modeBtn.innerText = "TRIKE";
+            document.querySelector(".fr").style.display = "none";
+            document.querySelector(".rr").style.display = "flex";
+            document.querySelector(".rl").style.display = "flex";
+
+            frontLabel.innerText = "Nose";
+            rearLabel.innerText = "Main";
+
+            break;
+
+          case 2: // TAIL
+
+            plane_tail_Svg.style.display = "block";
+
+            flLabel.innerText = "ML";
+            frLabel.innerText = "MR";
+            rlLabel.innerText = "TAIL(RL)";
+            rrLabel.innerText = "";
+            crossRow.style.display = "none";
+            document.querySelector(".rr").style.display = "none";
+            document.querySelector(".fr").style.display = "flex";
+            document.querySelector(".rl").style.display = "flex";
+            modeBtn.innerText = "TAIL";
+            frontLabel.innerText = "Main";
+            rearLabel.innerText = "Tail";
+
+            break;
+      }
   }
 
   function setStatus(id,online){
@@ -923,7 +1086,20 @@ void setup(){
     server.send(200, "text/plain", "RESET DONE");
   });
 
+  server.on("/mode", [](){
+    int mode = server.arg("mode").toInt();
+    if(mode >= MODE_CAR && mode <= MODE_TAIL){
+        scaleMode = (ScaleMode)mode;
+        prefs.putInt("scaleMode", mode);
+    }
+    server.send(200,"text/plain","OK");
+  });
+
   prefs.begin("scales");
+
+  scaleMode = (ScaleMode)prefs.getInt("scaleMode", MODE_CAR);
+
+  prefs.putInt("scaleMode", scaleMode);
 
   FL_cal = prefs.getFloat("FL_cal",1.0);
   FR_cal = prefs.getFloat("FR_cal",1.0);
@@ -936,13 +1112,10 @@ void setup(){
 }
 
 void loop(){
-  Serial.println("HX711 detected");
   /* detect scale if plugged in later */
   if(!scaleInitialized && millis() - lastScaleCheck > 1000){
     lastScaleCheck = millis();
     if(scale.is_ready()){
-      Serial.println("HX711 detected");
-
       if(FL_offset == 0){   
         delay(500);
         FL_offset = scale.read_average(20);
@@ -957,7 +1130,7 @@ void loop(){
   /* read FL scale */
   if(scalePresent && scale.is_ready()){
     float raw = scale.read_average(10);
-    Serial.println(raw);
+    // Serial.println(raw);
     float FL_new = (raw - FL_offset) / FL_cal;
     applyStability(FL_new, lastFL, FL_locked);
     if(FL_filtered == 0){
