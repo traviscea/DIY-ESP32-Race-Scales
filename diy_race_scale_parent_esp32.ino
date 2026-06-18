@@ -95,6 +95,23 @@ int battPercent(float v){
   return p;
 }
 
+float safeDivide(float numerator, float denominator){
+  if(isnan(denominator) || isinf(denominator))
+    return 0.0f;
+
+  if(abs(denominator) < 0.0001f)
+    return 0.0f;
+
+  return numerator / denominator;
+}
+
+float sanitizeFloat(float v){
+  if(isnan(v) || isinf(v))
+    return 0.0f;
+
+  return v;
+}
+
 void applyStability(float value, float &lastValue, bool &locked){
 
   float diff = abs(value - lastValue);
@@ -113,7 +130,7 @@ void handleData(){
   bool FR_online = (millis() - FR_lastSeen) < 3000;
   bool RL_online = (millis() - RL_lastSeen) < 3000;
   bool RR_online = (millis() - RR_lastSeen) < 3000;
-  bool FL_online = scalePresent;
+  bool FL_online = scalePresent && scale.is_ready();
 
   // force unlock if offline
   if(!FL_online) FL_locked = false;
@@ -127,10 +144,10 @@ void handleData(){
     return v;
   };
 
-  float FL_w = FL_online ? safe(FL) : 0;
-  float FR_w = FR_online ? safe(FR) : 0;
-  float RL_w = RL_online ? safe(RL) : 0;
-  float RR_w = RR_online ? safe(RR) : 0;
+  float FL_w = FL_online ? safe(sanitizeFloat(FL)) : 0;
+  float FR_w = FR_online ? safe(sanitizeFloat(FR)) : 0;
+  float RL_w = RL_online ? safe(sanitizeFloat(RL)) : 0;
+  float RR_w = RR_online ? safe(sanitizeFloat(RR)) : 0;
 
   float total = FL_w + FR_w + RL_w + RR_w;
 
@@ -196,16 +213,16 @@ void handleData(){
 
 void handleTare(){
 
-  FL_offset = scale.read_average(10);
+  if(scalePresent && scale.is_ready()){
+    FL_offset = scale.read_average(10);
+    prefs.putFloat("FL_offset", FL_offset);
+  }
+
   FR_offset = FR_raw;
   RL_offset = RL_raw;
   RR_offset = RR_raw;
 
-
-  prefs.putFloat("FL_offset", FL_offset); 
-
   server.send(200,"text/plain","OK");
-
 }
 
 void handleRoot(){
@@ -783,40 +800,86 @@ void handleRoot(){
 }
 
 void handleCalibrate(){
-
+  bool success = false;
   String pad = server.arg("pad");
   float known = server.arg("weight").toFloat();
 
+  if(
+    pad != "FL" &&
+    pad != "FR" &&
+    pad != "RL" &&
+    pad != "RR"
+  ){
+    server.send(400, "text/plain", "INVALID PAD");
+    return;
+  }
+
+
+
+  if(abs(known) < 0.001f){
+    server.send(400, "text/plain", "INVALID WEIGHT");
+    return;
+  }
+
   if(pad=="FL"){
+
+    if(!scalePresent || !scale.is_ready()){
+      server.send(400, "text/plain", "FL SCALE OFFLINE");
+      return;
+    }
+
     float reading = scale.read_average(20);
     float net = reading - FL_offset;
 
-    FL_cal = net / known;
-    prefs.putFloat("FL_cal",FL_cal);
+    float newCal = net / known;
 
+    if(isfinite(newCal) && abs(newCal) > 0.0001f){
+      FL_cal = newCal;
+      prefs.putFloat("FL_cal", FL_cal);
+      success = true;
+    }
   }
 
   if(pad=="FR"){
     float net = FR_raw - FR_offset;
-    FR_cal = net / known;
-    prefs.putFloat("FR_cal",FR_cal);
+
+    float newCal = net / known;
+
+    if(isfinite(newCal) && abs(newCal) > 0.0001f){
+      FR_cal = newCal;
+      prefs.putFloat("FR_cal", FR_cal);
+      success = true;
+    }
   }
 
   if(pad=="RL"){
     float net = RL_raw - RL_offset;
-    RL_cal = net / known;
-    prefs.putFloat("RL_cal",RL_cal);
 
+    float newCal = net / known;
+
+    if(isfinite(newCal) && abs(newCal) > 0.0001f){
+      RL_cal = newCal;
+      prefs.putFloat("RL_cal", RL_cal);
+      success = true;
+    }
   }
 
   if(pad=="RR"){
     float net = RR_raw - RR_offset;
-    RR_cal = net / known;
-    prefs.putFloat("RR_cal",RR_cal);
 
+    float newCal = net / known;
+
+    if(isfinite(newCal) && abs(newCal) > 0.0001f){
+      RR_cal = newCal;
+      prefs.putFloat("RR_cal", RR_cal);
+      success = true;
+    }
   }
-  server.send(200,"text/plain","CAL OK");
 
+  if(success)
+    server.send(200, "text/plain", "CAL OK");
+  else
+    server.send(400, "text/plain", "CAL FAILED");
 }
 
 
@@ -841,7 +904,7 @@ void onReceive(const esp_now_recv_info *info, const uint8_t *data, int len){
 
   if(strcmp(incomingData.pad,"FR")==0){
     FR_raw = incomingData.weight;
-    float FR_new = (FR_raw - FR_offset) / FR_cal;
+    float FR_new = safeDivide(FR_raw - FR_offset, FR_cal);
     applyStability(FR_new, lastFR, FR_locked);
     if(FR_filtered == 0){
       FR_filtered = FR_new;
@@ -856,7 +919,7 @@ void onReceive(const esp_now_recv_info *info, const uint8_t *data, int len){
 
   if(strcmp(incomingData.pad,"RL")==0){
     RL_raw = incomingData.weight;
-    float RL_new = (RL_raw - RL_offset) / RL_cal;
+    float RL_new = safeDivide(RL_raw - RL_offset, RL_cal);
     applyStability(RL_new, lastRL, RL_locked);
     if(RL_filtered == 0){
       RL_filtered = RL_new;
@@ -871,7 +934,7 @@ void onReceive(const esp_now_recv_info *info, const uint8_t *data, int len){
 
   if(strcmp(incomingData.pad,"RR")==0){
     RR_raw = incomingData.weight;
-    float RR_new = (RR_raw - RR_offset) / RR_cal;
+    float RR_new = safeDivide(RR_raw - RR_offset, RR_cal);
     applyStability(RR_new, lastRR, RR_locked);
     if(RR_filtered == 0){
       RR_filtered = RR_new;
@@ -930,19 +993,33 @@ void setup(){
   RL_cal = prefs.getFloat("RL_cal",1.0);
   RR_cal = prefs.getFloat("RR_cal",1.0);
 
+  if(isnan(FL_cal) || abs(FL_cal) < 0.0001f){
+    FL_cal = 1.0f;
+    prefs.putFloat("FL_cal", FL_cal);
+  }
+  if(isnan(FR_cal) || abs(FR_cal) < 0.0001f){
+    FR_cal = 1.0f;
+    prefs.putFloat("FR_cal", FR_cal);
+  }
+  if(isnan(RL_cal) || abs(RL_cal) < 0.0001f){
+    RL_cal = 1.0f;
+    prefs.putFloat("RL_cal", RL_cal);
+  }
+  if(isnan(RR_cal) || abs(RR_cal) < 0.0001f){
+    RR_cal = 1.0f;
+    prefs.putFloat("RR_cal", RR_cal);
+  }
+
   FL_offset = prefs.getFloat("FL_offset", 0);
 
   server.begin();
 }
 
 void loop(){
-  Serial.println("HX711 detected");
   /* detect scale if plugged in later */
   if(!scaleInitialized && millis() - lastScaleCheck > 1000){
     lastScaleCheck = millis();
     if(scale.is_ready()){
-      Serial.println("HX711 detected");
-
       if(FL_offset == 0){   
         delay(500);
         FL_offset = scale.read_average(20);
@@ -958,7 +1035,7 @@ void loop(){
   if(scalePresent && scale.is_ready()){
     float raw = scale.read_average(10);
     Serial.println(raw);
-    float FL_new = (raw - FL_offset) / FL_cal;
+    float FL_new = safeDivide(raw - FL_offset, FL_cal);
     applyStability(FL_new, lastFL, FL_locked);
     if(FL_filtered == 0){
       FL_filtered = FL_new;
