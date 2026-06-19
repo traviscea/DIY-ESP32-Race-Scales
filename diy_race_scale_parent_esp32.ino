@@ -130,7 +130,7 @@ void handleData(){
   bool FR_online = (millis() - FR_lastSeen) < 3000;
   bool RL_online = (millis() - RL_lastSeen) < 3000;
   bool RR_online = (millis() - RR_lastSeen) < 3000;
-  bool FL_online = scalePresent && scale.is_ready();
+  bool FL_online = scalePresent;
 
   // force unlock if offline
   if(!FL_online) FL_locked = false;
@@ -213,7 +213,7 @@ void handleData(){
 
 void handleTare(){
 
-  if(scalePresent && scale.is_ready()){
+  if(scalePresent){
     FL_offset = scale.read_average(10);
     prefs.putFloat("FL_offset", FL_offset);
   }
@@ -823,7 +823,7 @@ void handleCalibrate(){
 
   if(pad=="FL"){
 
-    if(!scalePresent || !scale.is_ready()){
+    if(!scalePresent){
       server.send(400, "text/plain", "FL SCALE OFFLINE");
       return;
     }
@@ -1032,7 +1032,7 @@ void loop(){
   }
 
   /* read FL scale */
-  if(scalePresent && scale.is_ready()){
+  if(scalePresent){
     float raw = scale.read_average(10);
     Serial.println(raw);
     float FL_new = safeDivide(raw - FL_offset, FL_cal);
