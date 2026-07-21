@@ -12,12 +12,46 @@ https://youtu.be/h9uxLq12wOU
 
 ---
 
+## ⚡ v1.1 Accuracy Patch
+
+An accuracy-focused firmware revision lives in [`Upgrades/`](Upgrades/README_v1.1.md):
+multi-point calibration, statistical stability locking, rotation calibration
+(pad-to-pad gain trims using the car as a transfer standard), per-pad packet-loss
+tracking, session JSON snapshots, and a versioned wire protocol.
+
+**v1.0 and v1.1 wire formats are incompatible — flash all boards together.**
+The current v1.1 protocol is `0x12`: a 13-byte packet with explicit magic,
+version, numeric pad ID, and a per-pad sequence counter. The master rejects
+older formats instead of silently treating their payload as weight data.
+Note also that v1.1 changes the cross-weight convention to the standard
+**RF + LR** (v1.0 reported LF + RR), so cross % values are not directly
+comparable across versions. See [`Upgrades/README_v1.1.md`](Upgrades/README_v1.1.md)
+for the full change list, operating procedure, and flashing instructions.
+
+Before flashing, run the complete pinned verification gate:
+
+```bash
+python Upgrades/tools/verify.py
+```
+
+It runs host protocol/source checks and compiles both sketches for the
+`lolin32_lite` profile using `espressif32@6.5.0` (Arduino core 2.0.14) and
+`bogde/HX711@0.7.5`. Use `--board <id>` if the delivered clone identifies
+differently. Hardware qualification and automatic v1.0 NVS migration remain
+deferred; after upgrading, reset and perform fresh ZERO, weight calibration,
+and rotation calibration.
+
+The setup instructions below (PAD_ID `#define`, etc.) apply to **v1.0**;
+v1.1 sets the pad identity over serial instead.
+
+---
+
 ## Features
 
 - Wireless communication using ESP-NOW between pads and master  
 - Real-time corner weights (FL / FR / RL / RR)  
 - Mobile-friendly web UI (no app required)  
-- Battery monitoring for each pad(coming soon - batteries lasts 8-10hrs so was not in a hurry to do this)
+- Battery monitoring for each pad (implemented in v1.1; batteries last 8-10 hrs)
 - Stability locking (auto-detect when weight settles)  
 - Unit switching (lbs / kg)  
 - Calibration and zeroing from browser  
@@ -26,6 +60,10 @@ https://youtu.be/h9uxLq12wOU
 ---
 
 ## Hardware Required
+
+**4 ESP32 boards total**: one master (which also reads the FL pad directly)
+plus three remote pads (FR / RL / RR). The 4-pack in the BOM covers the
+whole system.
 
 ### Per Pad (x4)
 - ESP32 (Lite or Dev board)  
@@ -77,6 +115,12 @@ Stl file: https://drive.google.com/file/d/1Z9YkdcgCBxQTEjgYmJWulF77Iv5ffJcg/view
 
 
 ## Wiring
+
+**Full guide: [`docs/WIRING.md`](docs/WIRING.md)** — covers the 12-cell,
+three-layer Wheatstone bridge layout, pre-power continuity checks, and the
+first-power test procedure. The quick reference below is a summary; the
+detailed guide is authoritative if they ever disagree.
+
 Make sure to check the polarity on the battery/esp32 connection. Some esp32s would be backwards on the jst connection from the battery.  I had to swap mine to ensure it didn't blow the board.  The board will have the positive side labeled and that should be the side that gets the red wire from the battery.
 
 <br>
@@ -192,9 +236,15 @@ Retrieve the MAC address from the master ESP32 serial output.
 
 ### 3. Set Pad ID
 
+**v1.0:**
+
 ```cpp
 #define PAD_ID "FR"   // Change per board
 ```
+
+**v1.1:** no source edit — the pad prompts for its ID (FR / RL / RR) over
+serial on first boot and stores it in NVS. See
+[`Upgrades/README_v1.1.md`](Upgrades/README_v1.1.md).
 
 ## Important Notes
 
