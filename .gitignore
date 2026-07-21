@@ -1,0 +1,15 @@
+# Agent/session artifacts
+.omo/
+.playwright-mcp/
+
+# Python
+__pycache__/
+*.pyc
+
+# PlatformIO
+.pio/
+.vscode/
+
+# OS noise
+.DS_Store
+Thumbs.db
