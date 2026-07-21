@@ -3,9 +3,10 @@
 Firmware changes and operating procedure for the accuracy-focused fork of
 [traviscea/DIY-ESP32-Race-Scales](https://github.com/traviscea/DIY-ESP32-Race-Scales).
 
-**Flash both files together.** The wire format layout is unchanged but the
-pad's float now carries raw HX711 counts — v1.0 pads and v1.1 master (or
-vice versa) will produce garbage.
+**Flash the master and all three remote pads together.** Protocol `0x12`
+uses a 13-byte versioned packet with raw HX711 counts and a sequence counter.
+The master rejects v1.0 and pre-sequence v1.1 packets rather than interpreting
+them as weights.
 
 ---
 
@@ -23,6 +24,11 @@ vice versa) will produce garbage.
 | `SAVE` button: downloads a full JSON snapshot to the phone/laptop | No record of weigh sessions |
 | Cross weight = RF + LR | v1.0 used LF + RR (opposite of standard convention) |
 | Battery via `analogReadMilliVolts()`; HX711 warm-up conversions discarded | ADC nonlinearity; power-up wander |
+| Pad identity stored in NVS, set/changed over serial — one binary for all pads | Wrong `#define` flashed to the wrong board |
+| Per-pad packet sequence counter; master reports `rx` / `lost` per pad in `/snapshot` | "The pad seems flaky" with no number behind it |
+| `/data` JSON built with a single `snprintf` into a static buffer | Heap fragmentation from ~30 String concats at 5 req/s over a multi-hour session |
+| `/reset` flushes the sample windows and link stats, not just cal state | Stale calibrated values lingering on screen after a reset |
+| Snapshot clears the lock flag for offline pads before recording | A stale `locked: true` saved against a pad that dropped mid-session |
 
 ---
 
@@ -45,8 +51,9 @@ vice versa) will produce garbage.
 2. **CAL** → pad → known weight. Add up to 3 points per pad; use two
    loads bracketing your actual corner weights (e.g. ~150 lb and ~500 lb).
    Enter weight `0` to clear a pad's points.
-3. Points below/above the calibrated range are extrapolated with the
-   nearest segment slope.
+3. Below the first calibration point, readings use a slope through the
+   origin (forces cal through zero near tare); above the last point,
+   readings extrapolate with the last segment's slope.
 
 ### Rotation calibration (after weight cal, or standalone)
 
@@ -109,10 +116,11 @@ driver ballast dwarf scale error; control those first.
 
 ## ⚠️ Protocol compatibility
 
-v1.1 uses a new wire format (`ScaleProtocol.h`, `SP_VERSION = 0x11`).
-The packet carries explicit magic bytes and a version field so a
-version mismatch is detected immediately rather than producing silent
-garbage readings.
+v1.1 uses a new wire format (`ScaleProtocol.h`, `SP_VERSION = 0x12`,
+13-byte packet with a per-pad sequence counter). The packet carries
+explicit magic bytes and a version field so a version mismatch is
+detected immediately rather than producing silent garbage readings.
+Earlier formats (`0x10` v1.0 and the pre-seq `0x11`) are rejected.
 
 **Flash all four nodes (master + three remote pads) at the same time.**
 A v1.0 pad sending to a v1.1 master (or vice-versa) will be rejected by
@@ -138,24 +146,36 @@ output and halts the pad — it will not transmit to the zero address.
    ```
 5. Flash each child pad.
 
-Each child pad prints its own `Pad ID: N  booting v1.1` message on
-startup to confirm correct identity.
+## Pad identity — set over serial, not in source
+
+The child firmware is **one binary for all three remote pads**. The pad
+ID (FR / RL / RR) lives in NVS, not in a `#define`:
+
+1. On first boot (or after a flash erase) the pad prompts on serial
+   (115200): type `FR`, `RL`, or `RR` + Enter. The choice persists.
+2. To reassign a pad later, type `ID FR` / `ID RL` / `ID RR` + Enter at
+   any time — the pad saves the new identity and reboots.
+
+Each pad prints `Pad ID: XX (n)  booting v1.1` on startup to confirm
+its identity. Label the physical plates to match.
 
 ---
 
-## Build / compile check
+## Verification and build
 
-A deterministic build script compiles both sketches via PlatformIO with
-pinned platform and library versions.  Run it from the `Upgrades/`
-directory:
+Use the single verification entry point from the repository root. It runs
+the host protocol/source checks, installs PlatformIO when necessary, and
+then compiles both authoritative `.ino` sketches with pinned dependencies:
 
 ```bash
-# Default board (lolin32_lite — compatible with the BOM's ESP32 Lite Rev1)
-python tools/build_check.py
+# Full gate; default board is lolin32_lite
+python Upgrades/tools/verify.py
 
 # Override board
-python tools/build_check.py --board esp32dev
-python tools/build_check.py --board esp32doit-devkit-v1
+python Upgrades/tools/verify.py --board esp32dev
+
+# Fast host-only gate
+python Upgrades/tools/verify.py --skip-build
 ```
 
 Pinned versions (in `build_check.py`):
@@ -172,15 +192,9 @@ Rev1, 4 MB flash, LiPo-interface board family listed in the BOM. The exact
 ACEIRMC clone schematic is not published, so use `--board` to override the
 profile if the delivered board identifies itself differently.
 
-**Host checks** (no toolchain required):
-
-```bash
-python tools/host_check.py
-```
-
-Verifies: 12-byte packet layout (ctypes struct mirror), validator logic
-(reject wrong length/magic/version/pad-ID), and source-level invariants
-in both `.ino` files and `ScaleProtocol.h`.
+The host gate verifies the 13-byte packet layout, validator behavior
+(length, magic, version, and pad ID), sequence tracking, and source-level
+queue/freshness invariants in both `.ino` files and `ScaleProtocol.h`.
 
 ---
 

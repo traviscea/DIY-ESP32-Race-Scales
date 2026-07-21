@@ -34,6 +34,15 @@ from pathlib import Path
 _HERE    = Path(__file__).resolve().parent   # Upgrades/tools/
 UPGRADES = _HERE.parent                      # Upgrades/
 
+
+def _pio_cmd() -> list:
+    """Locate PlatformIO: prefer 'pio' on PATH, fall back to the module
+    runner ('python -m platformio'), which covers pip --user installs on
+    Windows where the Scripts dir is not on PATH."""
+    if shutil.which("pio"):
+        return ["pio"]
+    return [sys.executable, "-m", "platformio"]
+
 PLATFORM      = "espressif32@6.5.0"
 HX711_LIB     = "bogde/HX711@0.7.5"
 DEFAULT_BOARD = "lolin32_lite"
@@ -85,13 +94,14 @@ def build_sketch(label: str, ino_path: Path, board: str,
 
     try:
         result = subprocess.run(
-            ["pio", "run", "--project-dir", str(proj)],
+            _pio_cmd() + ["run", "--project-dir", str(proj)],
             text=True,
         )
         return result.returncode
     except FileNotFoundError:
         print(
-            "\nERROR: 'pio' not found on PATH.\n"
+            "\nERROR: PlatformIO not found (neither 'pio' on PATH nor the\n"
+            "'platformio' Python module).\n"
             "Install PlatformIO Core:\n"
             "  pip install platformio\n"
             "  or: https://docs.platformio.org/en/latest/core/installation/\n"

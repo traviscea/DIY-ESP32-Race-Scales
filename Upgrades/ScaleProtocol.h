@@ -1,13 +1,15 @@
 /*
  * ScaleProtocol.h — DIY Race Scales v1.1 shared wire format
  *
- * Packet layout (12 bytes, little-endian IEEE-754 floats):
- *   [0]   magic0   = SP_MAGIC0  (0xD1)
- *   [1]   magic1   = SP_MAGIC1  (0xCE)
- *   [2]   version  = SP_VERSION (0x11)
- *   [3]   padId    = PadId enum  (FR=1, RL=2, RR=3)
- *   [4-7]  raw     = HX711 raw counts (float)
- *   [8-11] battery = volts       (float)
+ * Packet layout (13 bytes, little-endian IEEE-754 floats):
+ *   [0]    magic0   = SP_MAGIC0  (0xD1)
+ *   [1]    magic1   = SP_MAGIC1  (0xCE)
+ *   [2]    version  = SP_VERSION (0x12)
+ *   [3]    padId    = PadId enum  (FR=1, RL=2, RR=3)
+ *   [4]    seq      = per-pad send counter, wraps at 255 — lets the
+ *                     master measure packet loss per pad
+ *   [5-8]  raw      = HX711 raw counts (float)
+ *   [9-12] battery  = volts       (float)
  *
  * FL is wired directly to the master; it never appears on the wire.
  * Bumping SP_VERSION makes old firmwares hard-fail rather than
@@ -26,8 +28,8 @@
 
 #define SP_MAGIC0      0xD1u
 #define SP_MAGIC1      0xCEu
-#define SP_VERSION     0x11u    /* v1.1 — incompatible with v1.0 */
-#define SP_PACKET_LEN  12u
+#define SP_VERSION     0x12u    /* v1.1p2 — seq field added; incompatible with 0x10/0x11 */
+#define SP_PACKET_LEN  13u
 
 /* ── Numeric pad identifiers ────────────────────────────────────────────── */
 /*
@@ -49,6 +51,7 @@ typedef struct {
     uint8_t magic1;    /* SP_MAGIC1                         */
     uint8_t version;   /* SP_VERSION                        */
     uint8_t padId;     /* PadId enum value (1-3)            */
+    uint8_t seq;       /* per-pad send counter (wraps)      */
     float   raw;       /* RAW HX711 counts                  */
     float   battery;   /* volts                             */
 } ScalePacket;

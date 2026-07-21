@@ -24,8 +24,8 @@ UPGRADES = _HERE.parent                             # Upgrades/
 
 SP_MAGIC0  = 0xD1
 SP_MAGIC1  = 0xCE
-SP_VERSION = 0x11
-SP_LEN     = 12
+SP_VERSION = 0x12
+SP_LEN     = 13
 
 VALID_PAD_IDS = (1, 2, 3)   # FR=1, RL=2, RR=3
 
@@ -39,6 +39,7 @@ class ScalePacket(ctypes.LittleEndianStructure):
         ("magic1",  ctypes.c_uint8),
         ("version", ctypes.c_uint8),
         ("padId",   ctypes.c_uint8),
+        ("seq",     ctypes.c_uint8),
         ("raw",     ctypes.c_float),
         ("battery", ctypes.c_float),
     ]
@@ -61,9 +62,9 @@ def _valid(buf: bytes) -> bool:
     return buf[3] in VALID_PAD_IDS
 
 
-def _make(pad_id=1, raw=12345.0, batt=3.8) -> bytes:
-    return struct.pack("<BBBBff", SP_MAGIC0, SP_MAGIC1, SP_VERSION,
-                       pad_id, raw, batt)
+def _make(pad_id=1, seq=0, raw=12345.0, batt=3.8) -> bytes:
+    return struct.pack("<BBBBBff", SP_MAGIC0, SP_MAGIC1, SP_VERSION,
+                       pad_id, seq, raw, batt)
 
 
 def test_validator():
@@ -71,7 +72,7 @@ def test_validator():
     assert _valid(good), "valid packet rejected"
 
     # Wrong length
-    assert not _valid(good[:11]),          "short packet accepted"
+    assert not _valid(good[:12]),          "short packet accepted"
     assert not _valid(good + b'\x00'),     "long packet accepted"
     assert not _valid(b''),                "empty packet accepted"
 
@@ -83,9 +84,10 @@ def test_validator():
     bad = bytearray(good); bad[1] ^= 0xFF
     assert not _valid(bytes(bad)),         "bad magic1 accepted"
 
-    # Wrong version (v1.0)
-    bad = bytearray(good); bad[2] = 0x10
-    assert not _valid(bytes(bad)),         "v1.0 version byte accepted"
+    # Wrong versions (v1.0 and the pre-seq 0x11 format)
+    for old in (0x10, 0x11):
+        bad = bytearray(good); bad[2] = old
+        assert not _valid(bytes(bad)),     f"version 0x{old:02X} accepted"
 
     # padId = 0 — FL is local, must never appear on the wire
     bad = bytearray(good); bad[3] = 0
@@ -116,8 +118,10 @@ def test_source_invariants():
         "ScaleProtocol.h: missing static_assert"
     assert "SP_PACKET_LEN" in header, \
         "ScaleProtocol.h: missing SP_PACKET_LEN constant"
-    assert "#define SP_PACKET_LEN  12u" in header, \
-        "ScaleProtocol.h: SP_PACKET_LEN must be exactly 12u"
+    assert "#define SP_PACKET_LEN  13u" in header, \
+        "ScaleProtocol.h: SP_PACKET_LEN must be exactly 13u"
+    assert "uint8_t seq;" in header, \
+        "ScaleProtocol.h: packet must carry the seq field"
     assert "scalePacketValid" in header, \
         "ScaleProtocol.h: missing scalePacketValid function"
     assert "SP_MAGIC0" in header and "SP_MAGIC1" in header, \
@@ -130,8 +134,14 @@ def test_source_invariants():
     # ── Child .ino ────────────────────────────────────────────────────
     assert "ScaleProtocol.h" in child, \
         "child: missing #include ScaleProtocol.h"
-    assert "THIS_PAD" in child, \
-        "child: missing typed THIS_PAD constant (must not use PAD_ID string)"
+    assert "#define THIS_PAD" not in child, \
+        "child: compile-time THIS_PAD removed — pad ID lives in NVS"
+    assert "parsePadId" in child, \
+        "child: missing parsePadId (runtime pad ID)"
+    assert "padPrefs" in child and "putUChar" in child, \
+        "child: pad ID must be persisted to NVS via Preferences"
+    assert "pkt.seq++" in child, \
+        "child: seq counter must increment per send"
     assert "ScalePacket" in child, \
         "child: not using ScalePacket"
     assert "ScaleData" not in child, \
@@ -193,11 +203,38 @@ def test_source_invariants():
     assert "ESP_ARDUINO_VERSION_MAJOR" in parent, \
         "parent: missing ESP_ARDUINO_VERSION_MAJOR compat guard for onReceive"
 
+    # /data must NOT be built by String concatenation (heap fragmentation)
+    data_start = parent.index("void handleData")
+    data_end   = parent.index("void handleTare")
+    data_slice = parent[data_start:data_end]
+    assert "String json" not in data_slice, \
+        "parent: handleData must use snprintf, not String concatenation"
+    assert "snprintf" in data_slice, \
+        "parent: handleData missing snprintf JSON build"
+
+    # Snapshot must clear stale locks for offline pads
+    snap_start = parent.index("void handleSnapshot")
+    snap_slice = parent[snap_start : snap_start + 600]
+    assert "locked = false" in snap_slice, \
+        "parent: handleSnapshot must clear locked for offline pads"
+
+    # /reset must flush the sample window, not just cal state
+    reset_start = parent.index("server.on(\"/reset\"")
+    reset_slice = parent[reset_start : reset_start + 1200]
+    assert "count = 0" in reset_slice, \
+        "parent: /reset must flush the ring (count = 0)"
+    assert "updatePadStats" in reset_slice, \
+        "parent: /reset must recompute pad stats"
+
+    # Parent must track packet loss from the seq field
+    assert "lossCount" in parent and "lastSeq" in parent, \
+        "parent: missing seq-based packet-loss tracking"
+
 
 # ── runner ────────────────────────────────────────────────────────────────────
 
 TESTS = [
-    ("1. ScalePacket size (12 bytes)",     test_packet_size),
+    ("1. ScalePacket size (13 bytes)",     test_packet_size),
     ("2. scalePacketValid logic",          test_validator),
     ("3. Source invariants",               test_source_invariants),
 ]

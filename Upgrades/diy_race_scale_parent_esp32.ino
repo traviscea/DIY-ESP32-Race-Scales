@@ -74,6 +74,11 @@ struct Pad {
   float batt   = 0;
   unsigned long lastSeen = 0;
   bool  local = false;          // FL is wired to the master
+  /* link quality (remote pads only; FL stays 0/0) */
+  uint8_t  lastSeq   = 0;
+  bool     seqInit   = false;
+  uint32_t rxCount   = 0;
+  uint32_t lossCount = 0;       // gaps derived from the packet seq field
 };
 
 Pad pads[4];
@@ -283,41 +288,34 @@ void handleData(){
     crosspct = cross / total * 100;
   }
 
-  String json = "{";
-  json += "\"fl\":" + String(w[P_FL], 1) + ",";
-  json += "\"fr\":" + String(w[P_FR], 1) + ",";
-  json += "\"rl\":" + String(w[P_RL], 1) + ",";
-  json += "\"rr\":" + String(w[P_RR], 1) + ",";
+  /* Single snprintf into a static buffer — the old ~30-concat String
+     build fragments the heap at 5 req/s over a multi-hour session and
+     is the classic slow-death mode for this WebServer pattern.        */
+  static char buf[1024];
+  int n = snprintf(buf, sizeof(buf),
+    "{\"fl\":%.1f,\"fr\":%.1f,\"rl\":%.1f,\"rr\":%.1f,"
+    "\"fl_online\":%s,\"fr_online\":%s,\"rl_online\":%s,\"rr_online\":%s,"
+    "\"fl_locked\":%s,\"fr_locked\":%s,\"rl_locked\":%s,\"rr_locked\":%s,"
+    "\"fl_batt\":%d,\"fr_batt\":%d,\"rl_batt\":%d,\"rr_batt\":%d,"
+    "\"total\":%.1f,\"front\":%.1f,\"rear\":%.1f,\"left\":%.1f,\"right\":%.1f,"
+    "\"frontpct\":%.1f,\"rearpct\":%.1f,\"leftpct\":%.1f,\"rightpct\":%.1f,"
+    "\"cross\":%.1f}",
+    w[P_FL], w[P_FR], w[P_RL], w[P_RR],
+    online[P_FL] ? "true" : "false", online[P_FR] ? "true" : "false",
+    online[P_RL] ? "true" : "false", online[P_RR] ? "true" : "false",
+    pads[P_FL].locked ? "true" : "false", pads[P_FR].locked ? "true" : "false",
+    pads[P_RL].locked ? "true" : "false", pads[P_RR].locked ? "true" : "false",
+    battPercent(pads[P_FL].batt), battPercent(pads[P_FR].batt),
+    battPercent(pads[P_RL].batt), battPercent(pads[P_RR].batt),
+    total, front, rear, left, right,
+    frontpct, rearpct, leftpct, rightpct,
+    crosspct);
 
-  json += "\"fl_online\":" + String(online[P_FL] ? "true":"false") + ",";
-  json += "\"fr_online\":" + String(online[P_FR] ? "true":"false") + ",";
-  json += "\"rl_online\":" + String(online[P_RL] ? "true":"false") + ",";
-  json += "\"rr_online\":" + String(online[P_RR] ? "true":"false") + ",";
-
-  json += "\"fl_locked\":" + String(pads[P_FL].locked ? "true":"false") + ",";
-  json += "\"fr_locked\":" + String(pads[P_FR].locked ? "true":"false") + ",";
-  json += "\"rl_locked\":" + String(pads[P_RL].locked ? "true":"false") + ",";
-  json += "\"rr_locked\":" + String(pads[P_RR].locked ? "true":"false") + ",";
-
-  json += "\"fl_batt\":" + String(battPercent(pads[P_FL].batt)) + ",";
-  json += "\"fr_batt\":" + String(battPercent(pads[P_FR].batt)) + ",";
-  json += "\"rl_batt\":" + String(battPercent(pads[P_RL].batt)) + ",";
-  json += "\"rr_batt\":" + String(battPercent(pads[P_RR].batt)) + ",";
-
-  json += "\"total\":" + String(total, 1) + ",";
-  json += "\"front\":" + String(front, 1) + ",";
-  json += "\"rear\":"  + String(rear, 1)  + ",";
-  json += "\"left\":"  + String(left, 1)  + ",";
-  json += "\"right\":" + String(right, 1) + ",";
-
-  json += "\"frontpct\":" + String(frontpct, 1) + ",";
-  json += "\"rearpct\":"  + String(rearpct, 1)  + ",";
-  json += "\"leftpct\":"  + String(leftpct, 1)  + ",";
-  json += "\"rightpct\":" + String(rightpct, 1) + ",";
-  json += "\"cross\":"    + String(crosspct, 1);
-  json += "}";
-
-  server.send(200, "application/json", json);
+  if(n < 0 || n >= (int)sizeof(buf)){
+    server.send(500, "text/plain", "JSON OVERFLOW");
+    return;
+  }
+  server.send(200, "application/json", buf);
 }
 
 void handleTare(){
@@ -543,8 +541,11 @@ void handleRotCal(){
    lock state, cal points, trims, offsets. Client downloads as JSON. */
 void handleSnapshot(){
   float w[4];
+  bool online[4];
   for(int i = 0; i < 4; i++){
-    float v = padOnline(pads[i]) ? sanitizeFloat(padDisplay(pads[i])) : 0;
+    online[i] = padOnline(pads[i]);
+    if(!online[i]) pads[i].locked = false;   // never record a stale lock
+    float v = online[i] ? sanitizeFloat(padDisplay(pads[i])) : 0;
     w[i] = v < 0 ? 0 : v;
   }
   float total = w[0]+w[1]+w[2]+w[3];
@@ -563,10 +564,15 @@ void handleSnapshot(){
     j += ",\"lbs\":" + String(w[i], 2);
     j += ",\"sd\":" + String(p.sd, 3);
     j += ",\"locked\":" + String(p.locked ? "true":"false");
-    j += ",\"online\":" + String(padOnline(p) ? "true":"false");
+    j += ",\"online\":" + String(online[i] ? "true":"false");
     j += ",\"gain_trim_pct\":" + String((p.gain - 1.0f) * 100, 3);
     j += ",\"offset_raw\":" + String(p.offset, 0);
     j += ",\"batt_v\":" + String(p.batt, 2);
+    if(!p.local){
+      /* link quality — loss derived from the packet seq field */
+      j += ",\"rx\":" + String(p.rxCount);
+      j += ",\"lost\":" + String(p.lossCount);
+    }
     j += ",\"cal_pts\":[";
     for(int k = 0; k < p.nPts; k++){
       if(k) j += ",";
@@ -1280,12 +1286,25 @@ void setup(){
   server.on("/rotcal", handleRotCal);
   server.on("/snapshot", handleSnapshot);
   server.on("/reset", [](){
+    /* NOTE: relies on prefs.begin("scales") having run in setup().
+       The handler is *registered* before prefs.begin but cannot be
+       *invoked* until server.begin() — do not reorder setup() so that
+       the server starts before prefs is open.                        */
     prefs.clear();
     for(int i = 0; i < 4; i++){
-      pads[i].offset = 0;
-      pads[i].nPts = 0;
-      pads[i].gain = 1.0f;
-      pads[i].locked = false;
+      Pad &p = pads[i];
+      p.offset = 0;
+      p.nPts = 0;
+      p.gain = 1.0f;
+      p.locked = false;
+      /* flush the sample window + link stats too — otherwise stale
+         calibrated values keep displaying until the ring refills     */
+      p.count = 0;
+      p.head = 0;
+      p.rxCount = 0;
+      p.lossCount = 0;
+      p.seqInit = false;
+      updatePadStats(p);
     }
     server.send(200, "text/plain", "RESET DONE");
   });
@@ -1333,8 +1352,20 @@ void loop(){
         default:     break;
       }
       if (idx >= 0) {
-        pads[idx].batt = sanitizeFloat(qpkt.battery);
-        pushSample(pads[idx], sanitizeFloat(qpkt.raw));
+        Pad &pp = pads[idx];
+        /* link quality from the per-pad seq counter: any gap > 1 in
+           the (mod-256) difference is lost packets. Resets at pad
+           reboot look like one large gap — acceptable noise for a
+           diagnostic counter.                                        */
+        if (pp.seqInit) {
+          uint8_t gap = (uint8_t)(qpkt.seq - pp.lastSeq);
+          if (gap > 1) pp.lossCount += (uint32_t)(gap - 1);
+        }
+        pp.lastSeq = qpkt.seq;
+        pp.seqInit = true;
+        pp.rxCount++;
+        pp.batt = sanitizeFloat(qpkt.battery);
+        pushSample(pp, sanitizeFloat(qpkt.raw));
       }
     }
   }
